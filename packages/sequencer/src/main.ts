@@ -51,10 +51,10 @@ async function startSequencing(ctx: Context, blockHash: Hash, untilBlockNum: num
     await processBlock(ctx, hash, true, (skipped) => {
         if (skipped) {
             counter.incSkipped();
-        }else{
+        } else {
             counter.incProceed();
         }
-        if ((blockNumber > 2 && blockNumber > untilBlockNum) && counter.skipped > MAX_SKIP_BLOCKS 
+        if ((blockNumber > 2 && blockNumber > untilBlockNum) && counter.skipped > MAX_SKIP_BLOCKS
             || noSkipLimit) {
             setTimeout(async () => await startSequencing(ctx, parentHash,
                 untilBlockNum, counter, done), 10);
@@ -84,8 +84,17 @@ async function main() {
     console.log(`${process.argv}`)
     const seqAll = process.argv.indexOf('--all') > -1;
 
-    const startingBlockHash = (await api.rpc.chain.getBlockHash());
-    const startingBlock = (await api.rpc.chain.getHeader(startingBlockHash));
+    let startingBlockNumber = process.argv.find(a => a.startsWith("--starting-block="));
+
+    let startingBlockHash = (await api.rpc.chain.getBlockHash());
+    let startingBlock: any = null;
+
+    if (startingBlockNumber) {
+        startingBlockNumber = startingBlockNumber.split("=")[1];
+        startingBlockHash = (await api.rpc.chain.getBlockHash(startingBlockNumber));
+        console.log(`Use user specified starting block [${startingBlockNumber}] ${startingBlockHash}`);
+    }
+    startingBlock = (await api.rpc.chain.getHeader(startingBlockHash));
 
     MongoClient.connect(dbUri, async (err, client: MongoClient) => {
         if (err == null) {
@@ -94,7 +103,7 @@ async function main() {
             let untilBlock = 0;
             if (!seqAll) {
                 const lastProcBlock = (await getLastBlock(db))?.value;
-                if (lastProcBlock != null){
+                if (lastProcBlock != null) {
                     console.log(`starting block [${startingBlock.number}] until block: [${lastProcBlock.number}] ${lastProcBlock.hash}`);
                     untilBlock = lastProcBlock.number;
                 }

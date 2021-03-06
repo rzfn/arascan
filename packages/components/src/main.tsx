@@ -180,8 +180,21 @@ async function processBlock(ctx: Context, blockHash: Hash, verbose: boolean = fa
                     }
                 });
 
+            let method = "unknown";
+            let section = "unknown";
 
-            let { method, section } = api.registry.findMetaCall(callIndex);
+
+            // let { method, section } = api.registry.findMetaCall(callIndex);
+
+            try {
+                const mCall = api.registry.findMetaCall(callIndex);
+                if (mCall != null){
+                    method = mCall.method;
+                    section = mCall.section;
+                }
+            } catch (e) {
+                console.log(`[ERROR] ${e}`);
+            }
             section = section.toString();
 
             if (metaClassMap[`${section}`] && metaClassMap[`${section}`][`${method}`] == "transfer") {

@@ -4,5 +4,5 @@
     "outDir": "../dist",
     "types": ["node"]
   },
-  "references": [{ "path": "../../app/src" }]
+  "references": [{ "path": "../../components/src" }]
 }
