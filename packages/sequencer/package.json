@@ -1,0 +1,35 @@
+{
+  "name": "@arascan/sequencer",
+  "version": "1.0.0",
+  "main": "dist/main.js",
+  "scripts": {
+    "test": "mocha \"dist/test/**/*.spec.js\"",
+    "prestart": "yarn workspace @arascan/components build",
+    "start": "tsc --build src && node --enable-source-maps ./dist/main.js",
+    "start-account-updater": "tsc --build src && node --enable-source-maps ./dist/account_updater.js",
+    "start-stateup": "tsc --build src && node --enable-source-maps ./dist/stateup.js"
+  },
+  "dependencies": {
+    "@arascan/components": "^1.0.0",
+    "@polkadot/api": "^3.11.1",
+    "@types/mongodb": "^3.6.8",
+    "compression": "^1.7.4",
+    "dotenv": "^8.2.0",
+    "mongodb": "^3.6.4"
+  },
+  "devDependencies": {
+    "@types/node": "^14.14.31"
+  },
+  "files": [
+    "dist",
+    "src",
+    "!dist/test",
+    "!dist/tsconfig.tsbuildinfo"
+  ],
+  "license": "Apache-2.0",
+  "repository": "https://github.com/nusantarachain/arascan",
+  "private": true,
+  "publishConfig": {
+    "access": "restricted"
+  }
+}

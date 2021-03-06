@@ -1,0 +1,32 @@
+{
+  "name": "@arascan/api",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "mocha \"dist/test/**/*.spec.js\"",
+    "prestart": "yarn workspace @arascan/components build",
+    "start": "node --enable-source-maps ./dist/server-main.js"
+  },
+  "dependencies": {
+    "@arascan/components": "^1.0.0",
+    "@types/mongodb": "^3.6.8",
+    "@polkadot/api": "^3.11.1",
+    "compression": "^1.7.4",
+    "dotenv": "^8.2.0",
+    "express": "^4.17.1",
+    "mongodb": "^3.6.4",
+    "restify": "^8.5.1"
+  },
+  "files": [
+    "dist",
+    "src",
+    "!dist/test",
+    "!dist/tsconfig.tsbuildinfo"
+  ],
+  "license": "Apache-2.0",
+  "repository": "https://github.com/nusantarachain/arascan",
+  "private": true,
+  "publishConfig": {
+    "access": "public"
+  }
+}

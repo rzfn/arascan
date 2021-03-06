@@ -1,0 +1,32 @@
+{
+  "name": "@arascan/components",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "mocha \"dist/test/**/*.spec.js\"",
+    "build": "tsc --build src"
+  },
+  "files": [
+    "dist",
+    "src",
+    "!dist/test",
+    "!dist/tsconfig.tsbuildinfo"
+  ],
+  "license": "Apache-2.0",
+  "repository": "git@github.com:wixplosives/sample-monorepo.git",
+  "sideEffects": false,
+  "private": true,
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@polkadot/util": "^6.0.1-5",
+    "@polkadot/util-crypto": "^6.0.1-5"
+  },
+  "dependencies": {
+    "@polkadot/api": "^3.11.1",
+    "@types/mongodb": "^3.6.8",
+    "lodash": "^4.17.21",
+    "crc32":"0.2.2"
+  }
+}
