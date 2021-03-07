@@ -48,33 +48,30 @@ function withDb<T>(callback: (db: Db, client: MongoClient) => Promise<T>) {
     return doner;
 }
 
-function getTransfers(req: any, res: any, next: any) {
-    const addr = req.params.addr;
-    const skip = parseInt(req.query.skip || '0');
-    const limit = parseInt(req.query.limit || '50');
-    console.log("Get transfer transaction for " + addr);
+// function getTransfers(req: any, res: any, next: any) {
+//     const addr = req.params.addr;
+//     const { skip, limit } = parseSkipLimit(req);
 
-    withDb(async (db, _client) => {
-        db.collection("transfers").find({
-            '$or': [
-                { 'src': addr },
-                { 'dst': addr }
-            ]
-        })
-            .sort({ 'ts': -1 })
-            .skip(skip).limit(limit)
-            .toArray((err: any, result: Array<any>) => {
-                if (err == null) {
-                    res.send({ entries: result });
-                }
-            });
-    }).done(next);
+//     withDb(async (db, _client) => {
+//         db.collection("transfers").find({
+//             '$or': [
+//                 { 'src': addr },
+//                 { 'dst': addr }
+//             ]
+//         })
+//         .sort({ 'ts': -1 })
+//         .skip(skip).limit(limit)
+//         .toArray((err: any, result: Array<any>) => {
+//             if (err == null) {
+//                 res.send({ entries: result });
+//             }
+//         });
+//     }).done(next);
 
-}
+// }
 
 function getAccounts(req: any, res: any, next: any) {
-    const skip = parseInt(req.query.skip || '0');
-    const limit = parseInt(req.query.limit || '50');
+    const { skip, limit } = parseSkipLimit(req);
 
     if (!validOffsetLimit(skip, limit)) {
         res.send({ entries: [] });
@@ -109,14 +106,22 @@ function getAccountTransfers(req: any, res: any, next: any) {
     }
 
     withDb(async (db, _client) => {
-        db.collection("transfers")
-            .find({ '$or': [{ 'src': addr }, { 'dst': addr }] })
-            .sort({ 'ts': -1 })
-            .toArray((err: any, result: Array<any>) => {
-                if (err == null) {
-                    res.send({ entries: result });
-                }
-            });
+        const count = await db.collection("transfers")
+            .count({ '$or': [{ 'src': addr }, { 'dst': addr }] });
+        if (count > 0) {
+            db.collection("transfers")
+                .find({ '$or': [{ 'src': addr }, { 'dst': addr }] })
+                .sort({ 'ts': -1 })
+                .skip(skip).limit(limit)
+                .toArray((err: any, result: Array<any>) => {
+                    if (err == null) {
+                        res.send({ entries: result, count });
+                    }
+                });
+        } else {
+            res.send({ entries: [], count });
+        }
+
     }).done(next);
 }
 
@@ -219,6 +224,22 @@ function getStats(_req: any, res: any, next: any) {
     }).done(next);
 }
 
+function getToken(_req: any, res: any, _next: any) {
+    // withDb(async (_db, _client) => {
+    // @TODO: temporary, please change with data from market
+    res.send({
+        'data': {
+            token: ["ARA"],
+            detail: {
+                "ARA": {
+                    'price': "500"
+                }
+            }
+        }
+    });
+    // }).done(next);
+}
+
 
 const WebSocket = require("ws");
 
@@ -302,7 +323,7 @@ ApiPromise.create({
 });
 
 
-server.get('/transfers/:addr', getTransfers);
+// server.get('/transfers/:addr', getTransfers);
 server.get('/account/:addr/transfers', getAccountTransfers);
 server.get('/account/:addr', getAccountOne);
 server.get('/accounts', getAccounts);
@@ -310,6 +331,7 @@ server.get('/block/:block', getBlockOne);
 server.get('/blocks', getBlocks);
 server.get('/events', getEvents);
 server.get('/stats', getStats);
+server.get('/token', getToken);
 
 server.listen('8089', '127.0.0.1', () => {
     console.log(`${server.name} listening at ${server.url}`);

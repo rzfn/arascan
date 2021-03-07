@@ -40,6 +40,7 @@ class Counter {
 
 const MAX_SKIP_BLOCKS = 50;
 const noSkipLimit = process.argv.indexOf('--no-skip-limit') > -1;
+const seqAll = process.argv.indexOf('--all') > -1;
 
 async function startSequencing(ctx: Context, blockHash: Hash, untilBlockNum: number, counter: Counter, done: () => void) {
     const { api } = ctx;
@@ -54,8 +55,8 @@ async function startSequencing(ctx: Context, blockHash: Hash, untilBlockNum: num
         } else {
             counter.incProceed();
         }
-        if ((blockNumber > 2 && blockNumber > untilBlockNum) && counter.skipped > MAX_SKIP_BLOCKS
-            || noSkipLimit) {
+        if ((blockNumber > 2 && blockNumber > untilBlockNum && counter.skipped < MAX_SKIP_BLOCKS)
+            || (noSkipLimit && seqAll)) {
             setTimeout(async () => await startSequencing(ctx, parentHash,
                 untilBlockNum, counter, done), 10);
         } else {
@@ -82,7 +83,7 @@ async function main() {
     });
 
     console.log(`${process.argv}`)
-    const seqAll = process.argv.indexOf('--all') > -1;
+
 
     let startingBlockNumber = process.argv.find(a => a.startsWith("--starting-block="));
 

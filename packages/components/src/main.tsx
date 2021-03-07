@@ -135,11 +135,11 @@ async function processBlock(ctx: Context, blockHash: Hash, verbose: boolean = fa
     const allEvents = await api.query.system.events.at(hash);
 
     const colTrf = db.collection('transfers');
-    const colExtr = db.collection('blocks');
+    const colBlocks = db.collection('blocks');
     const colEvents = db.collection('events');
 
     // check is already exists
-    const exists = await colExtr.findOne({ '_id': blockNumber });
+    const exists = await colBlocks.findOne({ '_id': blockNumber });
 
     if (exists != null) {
         console.log(`\nBlock [${blockNumber}] exists, ignored.`);
@@ -188,7 +188,7 @@ async function processBlock(ctx: Context, blockHash: Hash, verbose: boolean = fa
 
             try {
                 const mCall = api.registry.findMetaCall(callIndex);
-                if (mCall != null){
+                if (mCall != null) {
                     method = mCall.method;
                     section = mCall.section;
                 }
@@ -257,15 +257,19 @@ async function processBlock(ctx: Context, blockHash: Hash, verbose: boolean = fa
         });
     }
 
-    // finally add the block into the db
-    await colExtr.updateOne({ '_id': blockNumber }, {
-        '$set': {
-            'block_num': blockNumber,
-            'block_hash': hash.toHex(),
-            'block_parent_hash': parentHash.toHex(),
-            'extrinsics': JSON.parse(`${extrinsics}`)
-        }
-    }, { 'upsert': true });
+    try {
+        // finally add the block into the db
+        await colBlocks.updateOne({ '_id': blockNumber }, {
+            '$set': {
+                'block_num': blockNumber,
+                'block_hash': hash.toHex(),
+                'block_parent_hash': parentHash.toHex(),
+                'extrinsics': JSON.parse(`${extrinsics}`)
+            }
+        }, { 'upsert': true });
+    } catch (error) {
+        console.log(`[ERROR] updating blocks data error ${error}`)
+    }
 
 
     callback(false);

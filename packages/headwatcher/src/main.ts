@@ -28,9 +28,9 @@ async function main() {
         }
     });
 
-    const validators = await api.query.staking.validators.keys();
+    // const validators = await api.query.staking.validators.keys();
 
-    console.log(`${validators}`);
+    // console.log(`${validators}`);
 
     const unsub = await api.rpc.chain.subscribeNewHeads((header) => {
         MongoClient.connect(dbUri, async (err, client: MongoClient) => {
@@ -56,15 +56,15 @@ async function main() {
 }
 
 // function testBlock(){
-    // // for debugging
-    // MongoClient.connect(dbUri, async (err, client: MongoClient) => {
-    //     if (err == null) {
-    //         const db = client.db("nuchain");
-    //         let ctx = new Context(api, db, client);
-    //         let blockHash = (await api.rpc.chain.getBlockHash(53871));
-    //         await processBlock(ctx, blockHash);
-    //     }
-    // });
+// // for debugging
+// MongoClient.connect(dbUri, async (err, client: MongoClient) => {
+//     if (err == null) {
+//         const db = client.db("nuchain");
+//         let ctx = new Context(api, db, client);
+//         let blockHash = (await api.rpc.chain.getBlockHash(53871));
+//         await processBlock(ctx, blockHash);
+//     }
+// });
 // }
 
 
