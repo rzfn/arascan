@@ -45,8 +45,8 @@ const seqAll = process.argv.indexOf('--all') > -1;
 async function startSequencing(ctx: Context, blockHash: Hash, untilBlockNum: number, counter: Counter, done: () => void) {
     const { api } = ctx;
 
-    let block = await api.rpc.chain.getBlock(blockHash);
-    let { block: { header: { parentHash, number, hash } } } = block;
+    const block = await api.rpc.chain.getBlock(blockHash);
+    const { block: { header: { parentHash, number, hash } } } = block;
     const blockNumber = number.toNumber();
 
     await processBlock(ctx, hash, true, (skipped) => {
@@ -110,16 +110,16 @@ async function main() {
                 }
             }
 
-            let ctx = new Context(api, db, client);
+            const ctx = new Context(api, db, client);
 
             // await processBlock(ctx, header.hash, untilBlockHash);
-            let counter = new Counter(0);
+            const counter = new Counter(0);
 
             await startSequencing(ctx, startingBlock.hash, untilBlock, counter, () => {
 
                 console.log("Setting last processed block");
 
-                let data = startingBlock.toJSON();
+                const data = startingBlock.toJSON();
                 data['hash'] = startingBlockHash.toHex() as any;
 
                 db.collection("processed").updateOne({ '_id': 'last_block' },

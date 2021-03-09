@@ -204,9 +204,9 @@ function getEvents(req: any, res: any, next: any) {
 }
 
 async function queryStats(db: any) {
-    let accountCount = await db.collection("accounts").countDocuments({});
-    let eventCount = await db.collection("events").countDocuments({});
-    let { era, finalizedBlockCount, session, validators } = await db.collection("metadata").findOne({ '_id': "stats" });
+    const accountCount = await db.collection("accounts").countDocuments({});
+    const eventCount = await db.collection("events").countDocuments({});
+    const { era, finalizedBlockCount, session, validators } = await db.collection("metadata").findOne({ '_id': "stats" });
     return {
         accounts: accountCount,
         events: eventCount,
@@ -266,7 +266,7 @@ function wsSend(ws: WebSocket, data: any) {
     }
 }
 
-let WS_CLIENTS: any = [];
+const WS_CLIENTS: any = [];
 wss.on('connection', function connection(ws: any) {
 
     WS_CLIENTS.push(ws);

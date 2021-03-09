@@ -54,10 +54,10 @@ async function main() {
         if (err == null) {
             const db = client.db("nuchain");
 
-            let ctx = new Context(api, db, client);
+            const ctx = new Context(api, db, client);
 
-            let counter = new Counter(0);
-            let doner = new Promise((resolve:any)=>{
+            const counter = new Counter(0);
+            const doner = new Promise((resolve:any)=>{
                 db.collection("accounts").find({})
                 .toArray(async (err: any, result: Array<any>) => {
                     if (err == null) {
