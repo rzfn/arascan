@@ -4,7 +4,6 @@ networks:
   app-tier:
     driver: bridge
 
-
 services:
   mongodb:
     image: 'mvertes/alpine-mongo'
@@ -24,7 +23,22 @@ services:
     volumes:
       - '/tmp/nuchain-testnet:/data'
     command: 'nuchain --base-path=/data --rpc-cors="*" --chain=testnet --bootnodes=/ip4/119.81.4.212/tcp/30334/p2p/12D3KooWK6urQQdUbyzu12R89pdE1TkQgPx1FaMHFXhkxfh84wgy  --pruning=archive --rpc-external --ws-external --rpc-methods=Unsafe'
+    networks:
+      - app-tier
 
+  api-server:
+    image: 'node:current-alpine3.12'
+    environment:
+      - NUCHAIN_WS_SOCKET_URL=ws://nuchain-node:9944
+      - MONGODB_URI=mongodb://mongodb:27017
+    volumes:
+      - './:/arascan'
+    working_dir: '/arascan'
+    ports:
+      - '8089:8089'
+    command: 'yarn start:api-server --listen-all'
+    networks:
+      - app-tier
 
 # volumes:
 #   dbdata:

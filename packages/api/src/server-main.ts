@@ -15,7 +15,7 @@
 
 import { MongoClient, Db } from "mongodb";
 import { isHex, toNumber } from "@arascan/components";
-import { ApiPromise } from "@polkadot/api";
+import { ApiPromise, WsProvider } from "@polkadot/api";
 
 const restify = require('restify');
 
@@ -291,7 +291,12 @@ wss.on('connection', function connection(ws: any) {
     });
 });
 
+const WS_SOCKET_URL = process.env.NUCHAIN_WS_SOCKET_URL || 'ws://127.0.0.1:9944'
+
+console.log(`Using WS socket address: ${WS_SOCKET_URL}`);
+
 ApiPromise.create({
+    provider: new WsProvider(WS_SOCKET_URL),
     types: {
         Address: 'MultiAddress',
         LookupSource: 'MultiAddress'
@@ -333,7 +338,9 @@ server.get('/events', getEvents);
 server.get('/stats', getStats);
 server.get('/token', getToken);
 
-server.listen('8089', '127.0.0.1', () => {
+const listenAll = process.argv.indexOf('--listen-all') > -1;
+
+server.listen('8089', listenAll ? '0.0.0.0' : '127.0.0.1', () => {
     console.log(`${server.name} listening at ${server.url}`);
 });
 
