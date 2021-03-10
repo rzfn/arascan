@@ -7,7 +7,8 @@
     "prestart": "yarn workspace @arascan/components build",
     "start": "tsc --build src && node --enable-source-maps ./dist/main.js",
     "start-account-updater": "tsc --build src && node --enable-source-maps ./dist/account_updater.js",
-    "start-stateup": "tsc --build src && node --enable-source-maps ./dist/stateup.js"
+    "start-stateup": "tsc --build src && node --enable-source-maps ./dist/stateup.js",
+    "inspect-block": "node ./dist/inspect.js"
   },
   "dependencies": {
     "@arascan/components": "^1.0.0",

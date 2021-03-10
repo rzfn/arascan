@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import type { ApiPromise } from '@polkadot/api';
+import { hexToString, isHex, isU8a, u8aToHex } from "@polkadot/util";
 import type { Block, Hash } from '@polkadot/types/interfaces';
 
 import type { MongoClient, Db } from 'mongodb';
@@ -81,6 +82,10 @@ const eventPostProcess: any = {
         const accountId2 = event.data[1].toHuman();
         updateAccount(ctx, accountId1);
         updateAccount(ctx, accountId2);
+    },
+    'identity__IdentitySet__*': async (ctx: Context, _block: Block, event: any, _d: any) => {
+        let accountId = event.data[0].toHuman();
+        updateAccount(ctx, accountId, new UpdateOptions().setIdentity(true));
     }
 };
 
@@ -92,11 +97,58 @@ function toNumber(d: any) {
     return parseInt(d) || 0;
 }
 
-async function updateAccount(ctx: Context, accountId: string) {
+class UpdateOptions {
+    identity:boolean;
+
+    constructor(identity:boolean=false){
+        this.identity = identity;
+    }
+
+    static default(): UpdateOptions {
+        return new UpdateOptions();
+    }
+
+    setIdentity(identity:boolean){
+        this.identity = identity;
+        return this;
+    }
+}
+
+async function updateAccount(ctx: Context, accountId: string, opts:UpdateOptions=UpdateOptions.default()) {
     const bal = await ctx.api.query.system.account(accountId);
-    ctx.db.collection('accounts').updateOne({ '_id': accountId },
+    await ctx.db.collection('accounts').updateOne({ '_id': accountId },
         { '$set': { 'balance': bal.data.toJSON() } },
-        { upsert: true });
+        { 'upsert': true });
+
+    // update identity
+    if (opts.identity){
+        let rv = await ctx.api.query.identity.identityOf(accountId);
+        if (rv.isSome){
+            let identity = rv.unwrap();
+            let ident:any = {};
+            if (identity.info.display.isRaw){
+                ident['display'] = hexToString(identity.info.display.asRaw.toHex());
+            }
+            if (identity.info.legal.isRaw){
+                ident['legal'] = hexToString(identity.info.legal.asRaw.toHex());
+            }
+            if (identity.info.web.isRaw){
+                ident['web'] = hexToString(identity.info.web.asRaw.toHex());
+            }
+            if (identity.info.email.isRaw){
+                ident['email'] = hexToString(identity.info.email.asRaw.toHex());
+            }
+            if (identity.info.twitter.isRaw){
+                ident['twitter'] = hexToString(identity.info.twitter.asRaw.toHex());
+            }
+            if (identity.info.image.isRaw){
+                ident['image'] = hexToString(identity.info.image.asRaw.toHex());
+            }
+            await ctx.db.collection("accounts").updateOne({'_id': accountId},
+                {'$set': {'identity': ident }}, {'upsert': true});
+        }
+    }
+    
 }
 
 async function updateStats(ctx: Context) {
@@ -183,9 +235,6 @@ async function processBlock(ctx: Context, blockHash: Hash, verbose = false, call
             let method = "unknown";
             let section = "unknown";
 
-
-            // let { method, section } = api.registry.findMetaCall(callIndex);
-
             try {
                 const mCall = api.registry.findMetaCall(callIndex);
                 if (mCall != null) {
@@ -225,6 +274,8 @@ async function processBlock(ctx: Context, blockHash: Hash, verbose = false, call
 
                 const obj = await colTrf.findOne(query);
                 return [{ trait: "target", section, method, id: obj._id, nonce: extr.nonce.toNumber() }];
+            } else if (section == "identity") {
+                return [{ trait: "target", section, method, extr }];
             } else if (section == "timestamp") {
                 return [{ trait: "updater", section, method, extr }];
             } else if (section != "authorship") {
@@ -238,10 +289,12 @@ async function processBlock(ctx: Context, blockHash: Hash, verbose = false, call
     if (updater.length > 0) {
         targets.forEach((d: any) => {
             let { section, method } = d;
-            method = metaClassMap[section][method];
-            d.updater_extr = updater[0].extr;
-            if (processorClass[`${updater[0].section}`] && processorClass[`${updater[0].section}`][`${updater[0].method}__${method}`]) {
-                processorClass[`${updater[0].section}`][`${updater[0].method}__${method}`](ctx, d);
+            if (metaClassMap[section] != null) {
+                method = metaClassMap[section][method];
+                d.updater_extr = updater[0].extr;
+                if (processorClass[`${updater[0].section}`] && processorClass[`${updater[0].section}`][`${updater[0].method}__${method}`]) {
+                    processorClass[`${updater[0].section}`][`${updater[0].method}__${method}`](ctx, d);
+                }    
             }
 
             allEvents.forEach(({ event }) => {
@@ -280,7 +333,7 @@ async function getLastBlock(db: Db) {
     return await db.collection("processed").findOne({ '_id': 'last_block' });
 }
 
-import { isHex, isU8a, u8aToHex } from "@polkadot/util";
+
 import { decodeAddress, encodeAddress } from "@polkadot/util-crypto";
 
 export {

@@ -232,7 +232,7 @@ function getToken(_req: any, res: any, _next: any) {
             token: ["ARA"],
             detail: {
                 "ARA": {
-                    'price': "500"
+                    'price': "579"
                 }
             }
         }

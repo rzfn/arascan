@@ -25,6 +25,7 @@
                 "<node_internals>/**"
             ],
             "program": "${workspaceFolder}/packages/sequencer/src/main.ts",
+            "args": ["--starting-block=43"],
             "outFiles": [
                 "${workspaceFolder}/**/*.js"
             ],
