@@ -77,8 +77,8 @@ const eventPostProcess: any = {
             { '$set': { 'created_ts': d.updater_extr.method.args[0].toNumber() } })
     },
     'balances__Transfer__*': async (ctx: Context, _block: Block, event: any, _d: any) => {
-        const accountId1 = event.data[0].toHuman();;
-        const accountId2 = event.data[1].toHuman();;
+        const accountId1 = event.data[0].toHuman();
+        const accountId2 = event.data[1].toHuman();
         updateAccount(ctx, accountId1);
         updateAccount(ctx, accountId2);
     }
@@ -100,7 +100,7 @@ async function updateAccount(ctx: Context, accountId: string) {
 }
 
 async function updateStats(ctx: Context) {
-    let { api, db } = ctx;
+    const { api, db } = ctx;
 
     const era = (await api.query.staking.currentEra()).unwrap().toNumber();
     const session = (await api.query.session.currentIndex()).toNumber();
@@ -119,11 +119,11 @@ async function updateStats(ctx: Context) {
 
 }
 
-async function processBlock(ctx: Context, blockHash: Hash, verbose: boolean = false, callback: (skipped: boolean) => void = () => { }) {
+async function processBlock(ctx: Context, blockHash: Hash, verbose = false, callback: (skipped: boolean) => void = () => { }) {
     const { api, db } = ctx;
 
-    let signedBlock = await api.rpc.chain.getBlock(blockHash);
-    let { block: { header: { parentHash, number, hash }, extrinsics } } = signedBlock;
+    const signedBlock = await api.rpc.chain.getBlock(blockHash);
+    const { block: { header: { parentHash, number, hash }, extrinsics } } = signedBlock;
     const block = signedBlock.block;
     const blockNumber = number.toNumber();
 
@@ -149,10 +149,10 @@ async function processBlock(ctx: Context, blockHash: Hash, verbose: boolean = fa
 
     // console.log(`${allEvents}`);
 
-    let procExtrs =
+    const procExtrs =
         await Promise.all(extrinsics.map(async (extr, index) => {
 
-            let { signer, method: { callIndex, args } } = extr;
+            const { signer, method: { callIndex, args } } = extr;
 
             allEvents
                 .filter(({ phase, event }) =>
@@ -204,7 +204,7 @@ async function processBlock(ctx: Context, blockHash: Hash, verbose: boolean = fa
                     console.log(`[${blockNumber}] ${section}/${method}: ${signer} -> ${args[0]} amount: ${args[1]}`);
                 }
 
-                let query = {
+                const query = {
                     'block': blockNumber,
                     'src': `${signer}`,
                     'dst': `${args[0]}`,
@@ -223,7 +223,7 @@ async function processBlock(ctx: Context, blockHash: Hash, verbose: boolean = fa
                         }
                     }, { upsert: true });
 
-                let obj = await colTrf.findOne(query);
+                const obj = await colTrf.findOne(query);
                 return [{ trait: "target", section, method, id: obj._id, nonce: extr.nonce.toNumber() }];
             } else if (section == "timestamp") {
                 return [{ trait: "updater", section, method, extr }];
@@ -233,7 +233,7 @@ async function processBlock(ctx: Context, blockHash: Hash, verbose: boolean = fa
             return [];
         }));
 
-    let [updater, targets] = _.partition(_.flatMap(procExtrs, (a: any) => a), (d: any) => d.trait == "updater");
+    const [updater, targets] = _.partition(_.flatMap(procExtrs, (a: any) => a), (d: any) => d.trait == "updater");
 
     if (updater.length > 0) {
         targets.forEach((d: any) => {

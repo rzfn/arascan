@@ -39,7 +39,7 @@ async function main() {
 
                 console.log(`Imported block #${header.number}`);
 
-                let ctx = new Context(api, db, client);
+                const ctx = new Context(api, db, client);
 
                 await processBlock(ctx, header.hash, false)
                     .then(() => updateStats(ctx))
