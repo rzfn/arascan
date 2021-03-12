@@ -224,20 +224,25 @@ function getStats(_req: any, res: any, next: any) {
     }).done(next);
 }
 
-function getToken(_req: any, res: any, _next: any) {
-    // withDb(async (_db, _client) => {
-    // @TODO: temporary, please change with data from market
-    res.send({
-        'data': {
-            token: ["ARA"],
-            detail: {
-                "ARA": {
-                    'price': "579"
+function getToken(_req: any, res: any, next: any) {
+    withDb(async (db, _client) => {
+        // @TODO: temporary, please change with data from market when ready
+        const token = await db.collection("tokens").findOne({'_id': 'ARA'});
+        let price = '579';
+        if (token != null){
+            price = token['price'];
+        }
+        res.send({
+            'data': {
+                token: ["ARA"],
+                detail: {
+                    "ARA": {
+                        'price': price
+                    }
                 }
             }
-        }
-    });
-    // }).done(next);
+        });
+    }).done(next);
 }
 
 
