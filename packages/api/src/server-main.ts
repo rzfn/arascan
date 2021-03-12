@@ -85,7 +85,7 @@ function getAccounts(req: any, res: any, next: any) {
             .skip(skip).limit(limit)
             .toArray((err: any, result: Array<any>) => {
                 if (err == null) {
-                    res.send({ entries: result });
+                    res.send({ entries: result.filter((a) => a.created_ts != null && a.created_ts > 0) });
                 }
             });
     }).done(next);

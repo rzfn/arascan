@@ -4,7 +4,8 @@
   "main": "dist/index.js",
   "scripts": {
     "test": "mocha \"dist/test/**/*.spec.js\"",
-    "prestart": "yarn workspace @arascan/components build",
+    "prestart": "yarn workspace @arascan/components build && yarn workspace @arascan/api build",
+    "build": "tsc --build src",
     "start": "node --enable-source-maps ./dist/server-main.js"
   },
   "dependencies": {
