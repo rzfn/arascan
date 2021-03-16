@@ -25,7 +25,7 @@
   },
   "dependencies": {
     "@polkadot/api": "^3.11.1",
-    "@types/mongodb": "^3.6.8",
+    "@types/mongodb": "^3.6.10",
     "lodash": "^4.17.21",
     "crc32":"0.2.2"
   }
