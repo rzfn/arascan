@@ -24,7 +24,7 @@
     "@polkadot/util-crypto": "^6.0.1-5"
   },
   "dependencies": {
-    "@polkadot/api": "^3.11.1",
+    "@polkadot/api": "^4.3.1",
     "@types/mongodb": "^3.6.10",
     "lodash": "^4.17.21",
     "crc32":"0.2.2"
