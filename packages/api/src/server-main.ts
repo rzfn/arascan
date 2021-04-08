@@ -227,19 +227,24 @@ function getStats(_req: any, res: any, next: any) {
 function getToken(_req: any, res: any, next: any) {
     withDb(async (db, _client) => {
         // @TODO: temporary, please change with data from market when ready
-        const token = await db.collection("tokens").findOne({'_id': 'ARA'});
-        let price = '579';
-        if (token != null){
-            price = token['price'];
-        }
+
+        let tokens = await db.collection("tokens").find().toArray();
+        tokens = tokens.sort((a:any, _b:any) => a["_id"] == "ARA" ? -1 : 0);
+        const tokenSymbols = tokens.map(({_id, price, asset_id}) => [_id, price, asset_id]);
+
+        let detail = {};
+
+        tokenSymbols.forEach(tok => {
+            detail[tok[0]] = {
+                'asset_id': tok[2] || 0,
+                'price': tok[1]
+            }
+        });
+
         res.send({
             'data': {
-                token: ["ARA"],
-                detail: {
-                    "ARA": {
-                        'price': price
-                    }
-                }
+                token: tokenSymbols.map(a => a[0]),
+                detail: detail
             }
         });
     }).done(next);
