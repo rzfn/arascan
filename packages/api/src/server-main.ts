@@ -224,7 +224,7 @@ function getStats(_req: any, res: any, next: any) {
     withDb((db, _client) => {
         return queryStats(db).then((stats) => {
             res.send({ result: stats });
-        }).catch((err) => res.send({ result: {"error": "Cannot get stats data from database"} }));
+        }).catch((_err) => res.send({ result: {"error": "Cannot get stats data from database"} }));
     }).done(next);
 }
 
