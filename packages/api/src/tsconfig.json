@@ -2,7 +2,9 @@
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "../dist",
-    "types": ["node"]
+    "types": ["node"],
+    // "skipLibCheck": true,
+    "noImplicitAny": false
   },
   "references": [{ "path": "../../components/src" }]
 }
