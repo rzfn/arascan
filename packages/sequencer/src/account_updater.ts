@@ -59,9 +59,9 @@ async function main() {
             const counter = new Counter(0);
             const doner = new Promise((resolve:any)=>{
                 db.collection("accounts").find({})
-                .toArray(async (err: any, result: Array<any>) => {
+                .toArray((err: any, result: Array<any>) => {
                     if (err == null) {
-                        result.forEach(async (acc) => {
+                        result.forEach((acc) => {
                             console.log("processing: ", acc._id)
                             counter.incProceed();
                             updateAccount(ctx, acc._id);

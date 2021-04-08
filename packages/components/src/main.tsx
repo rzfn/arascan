@@ -72,7 +72,7 @@ const eventProcessorClass: any = {
 };
 
 const eventPostProcess: any = {
-    'system__NewAccount__timestamp__set': async (ctx: Context, _block: Block, event: any, d: any) => {
+    'system__NewAccount__timestamp__set': (ctx: Context, _block: Block, event: any, d: any) => {
         const accountId = event.data[0].toHuman();
         ctx.db.collection('accounts').updateOne({ '_id': accountId },
             { '$set': { 'created_ts': d.updater_extr.method.args[0].toNumber() } })
@@ -80,12 +80,12 @@ const eventPostProcess: any = {
     'balances__Transfer__*': async (ctx: Context, _block: Block, event: any, _d: any) => {
         const accountId1 = event.data[0].toHuman();
         const accountId2 = event.data[1].toHuman();
-        updateAccount(ctx, accountId1);
-        updateAccount(ctx, accountId2);
+        await updateAccount(ctx, accountId1);
+        await updateAccount(ctx, accountId2);
     },
     'identity__IdentitySet__*': async (ctx: Context, _block: Block, event: any, _d: any) => {
-        let accountId = event.data[0].toHuman();
-        updateAccount(ctx, accountId, new UpdateOptions().setIdentity(true));
+        const accountId = event.data[0].toHuman();
+        await updateAccount(ctx, accountId, new UpdateOptions().setIdentity(true));
     }
 };
 
@@ -100,7 +100,7 @@ function toNumber(d: any) {
 class UpdateOptions {
     identity:boolean;
 
-    constructor(identity:boolean=false){
+    constructor(identity=false){
         this.identity = identity;
     }
 
@@ -122,10 +122,10 @@ async function updateAccount(ctx: Context, accountId: string, opts:UpdateOptions
 
     // update identity
     if (opts.identity){
-        let rv = await ctx.api.query.identity.identityOf(accountId);
+        const rv = await ctx.api.query.identity.identityOf(accountId);
         if (rv.isSome){
-            let identity = rv.unwrap();
-            let ident:any = {};
+            const identity = rv.unwrap();
+            const ident:any = {};
             if (identity.info.display.isRaw){
                 ident['display'] = hexToString(identity.info.display.asRaw.toHex());
             }
@@ -171,7 +171,7 @@ async function updateStats(ctx: Context) {
 
 }
 
-async function processBlock(ctx: Context, blockHash: Hash, verbose = false, callback: (skipped: boolean) => void = () => { }) {
+async function processBlock(ctx: Context, blockHash: Hash, verbose = false, callback: (skipped: boolean) => void = () => ({}) ) {
     const { api, db } = ctx;
 
     const signedBlock = await api.rpc.chain.getBlock(blockHash);
@@ -288,12 +288,12 @@ async function processBlock(ctx: Context, blockHash: Hash, verbose = false, call
 
     if (updater.length > 0) {
         targets.forEach((d: any) => {
-            let { section, method } = d;
+            const { section, method } = d;
             if (metaClassMap[section] != null) {
-                method = metaClassMap[section][method];
+                const _method = metaClassMap[section][method];
                 d.updater_extr = updater[0].extr;
-                if (processorClass[`${updater[0].section}`] && processorClass[`${updater[0].section}`][`${updater[0].method}__${method}`]) {
-                    processorClass[`${updater[0].section}`][`${updater[0].method}__${method}`](ctx, d);
+                if (processorClass[`${updater[0].section}`] && processorClass[`${updater[0].section}`][`${updater[0].method}__${_method}`]) {
+                    processorClass[`${updater[0].section}`][`${updater[0].method}__${_method}`](ctx, d);
                 }    
             }
 

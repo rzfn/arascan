@@ -24,13 +24,13 @@ require('dotenv').config();
 const dbUri = process.env.MONGODB_URI || 'mongodb://localhost:27017';
 
 function withDb<T>(callback: (db: Db, client: MongoClient) => Promise<T>) {
-    let afterCompleted = (() => { });
+    let afterCompleted = (() => ({}));
     const doner = {
         done(whenDone: () => T) {
             afterCompleted = whenDone;
         }
     };
-    MongoClient.connect(dbUri, async (err: any, client: MongoClient) => {
+    MongoClient.connect(dbUri, {poolSize: 10}, async (err: any, client: MongoClient) => {
         if (err != null) {
             console.log(`[ERROR] cannot get db: ${err}`);
             afterCompleted();
@@ -78,7 +78,7 @@ function getAccounts(req: any, res: any, next: any) {
         return next();
     }
 
-    withDb(async (db, _client) => {
+    withDb((db, _client) => {
         db.collection("accounts")
             .find({})
             .sort({ 'created_ts': -1 })
@@ -88,6 +88,7 @@ function getAccounts(req: any, res: any, next: any) {
                     res.send({ entries: result.filter((a) => a.created_ts != null && a.created_ts > 0) });
                 }
             });
+        return Promise.resolve();
     }).done(next);
 }
 
@@ -128,8 +129,8 @@ function getAccountTransfers(req: any, res: any, next: any) {
 function getAccountOne(req: any, res: any, next: any) {
     const addr = req.params.addr;
 
-    withDb(async (db, _client) => {
-        db.collection("accounts")
+    withDb((db, _client) => {
+        return db.collection("accounts")
             .findOne({ '_id': addr })
             .then((result) => {
                 res.send({ result });
@@ -150,8 +151,8 @@ function getBlockOne(req: any, res: any, next: any) {
         next();
         return;
     }
-    withDb(async (db, _client) => {
-        db.collection("blocks")
+    withDb((db, _client) => {
+        return db.collection("blocks")
             .findOne({ $or: [{ '_id': blockNumOrHash }, { 'block_hash': blockNumOrHash }] })
             .then((result: any) => {
                 res.send({ result });
@@ -168,7 +169,7 @@ function getBlocks(req: any, res: any, next: any) {
         return next();
     }
 
-    withDb(async (db, _client) => {
+    withDb((db, _client) => {
         db.collection("blocks")
             .find({})
             .sort({ '_id': -1 })
@@ -178,6 +179,7 @@ function getBlocks(req: any, res: any, next: any) {
                     res.send({ entries: result });
                 }
             });
+        return Promise.resolve();
     }).done(next);
 }
 
@@ -190,7 +192,7 @@ function getEvents(req: any, res: any, next: any) {
         return next();
     }
 
-    withDb(async (db, _client) => {
+    withDb((db, _client) => {
         db.collection("events")
             .find({})
             .sort({ 'block': -1 })
@@ -200,6 +202,7 @@ function getEvents(req: any, res: any, next: any) {
                     res.send({ entries: result });
                 }
             });
+        return Promise.resolve();
     }).done(next);
 }
 
@@ -218,9 +221,10 @@ async function queryStats(db: any) {
 }
 
 function getStats(_req: any, res: any, next: any) {
-    withDb(async (db, _client) => {
-        const stats = await queryStats(db);
-        return res.send({ result: stats });
+    withDb((db, _client) => {
+        return queryStats(db).then((stats) => {
+            res.send({ result: stats });
+        }).catch((err) => res.send({ result: {"error": "Cannot get stats data from database"} }));
     }).done(next);
 }
 
@@ -232,7 +236,7 @@ function getToken(_req: any, res: any, next: any) {
         tokens = tokens.sort((a:any, _b:any) => a["_id"] == "ARA" ? -1 : 0);
         const tokenSymbols = tokens.map(({_id, price, asset_id}) => [_id, price, asset_id]);
 
-        let detail = {};
+        const detail = {};
 
         tokenSymbols.forEach(tok => {
             detail[tok[0]] = {

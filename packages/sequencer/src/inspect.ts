@@ -34,8 +34,8 @@ async function main() {
         return;
     }
 
-    let hash = await api.rpc.chain.getBlockHash(blockNum);
-    let block = await api.rpc.chain.getBlock(hash);
+    const hash = await api.rpc.chain.getBlockHash(blockNum);
+    const block = await api.rpc.chain.getBlock(hash);
 
     block.block.extrinsics.forEach((extr)=>{
         const callMeta = api.registry.findMetaCall(extr.method.callIndex);
