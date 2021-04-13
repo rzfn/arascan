@@ -54,21 +54,55 @@ const processorClass: any = {
         }
     }
 };
-const eventProcessorClass: any = {
-    'system': {
-        'NewAccount': async (ctx: Context, block: Block, event: any) => {
-            const accountId = event.data[0].toHuman();
-            const bal = await ctx.api.query.system.account(accountId);
-            ctx.db.collection('accounts').updateOne({ '_id': accountId },
-                {
-                    '$set': {
-                        'balance': bal.data.toJSON(),
-                        'created_at_block': block.header.number.toNumber()
-                    }
-                },
-                { upsert: true })
-        }
+
+const systemEventProcessorClass: any = {
+    'NewAccount': async (ctx: Context, event: any, _eventIdx: number, block: Block, _blockTs: number, _extrIdx: number) => {
+        const accountId = event.data[0].toHuman();
+        const bal = await ctx.api.query.system.account(accountId);
+        ctx.db.collection('accounts').updateOne({ '_id': accountId },
+            {
+                '$set': {
+                    'balance': bal.data.toJSON(),
+                    'created_at_block': block.header.number.toNumber()
+                }
+            },
+            { upsert: true })
     }
+};
+
+function processStakingEvent(ctx: Context, method: string, event: any, eventIdx: number, block: Block, blockTs: number, extrIdx: number) {
+    if (['Bonded', 'Reward', 'Slash', 'Unbounded', 'Withdrawn'].indexOf(method) >= 0) {
+        const blockNumber = block.header.number.toNumber();
+
+        // Note(exa): not sure which one is the correct one
+        const eventIndex = `${blockNumber}-${extrIdx}`;
+        const extrIndex = `${blockNumber}-${extrIdx}`;
+
+        ctx.db.collection('staking_txs').updateOne(
+            {
+                'stash_id': event.data[0].toHuman(),
+                'block_num': block.header.number.toNumber(),
+                'extrinsic_idx': extrIdx,
+                'event_idx': eventIdx,
+            },
+            {
+                '$set': {
+                    'block_timestamp': blockTs,
+                    'amount': `${event.data[1]}`,
+                    'event_id': method,
+                    'event_index': eventIndex,
+                    'extrinsic_index': extrIndex,
+                }
+            },
+            { upsert: true });
+    }
+}
+
+const eventProcessorClass: any = {
+    'system': async (ctx: Context, method: string, event: any, eventIdx: number, block: Block, blockTs: number, extrIdx: number) => {
+        systemEventProcessorClass[method](ctx, event, eventIdx, block, blockTs, extrIdx)
+    },
+    'staking': processStakingEvent,
 };
 
 const eventPostProcess: any = {
@@ -98,9 +132,9 @@ function toNumber(d: any) {
 }
 
 class UpdateOptions {
-    identity:boolean;
+    identity: boolean;
 
-    constructor(identity=false){
+    constructor(identity: boolean = false) {
         this.identity = identity;
     }
 
@@ -108,47 +142,47 @@ class UpdateOptions {
         return new UpdateOptions();
     }
 
-    setIdentity(identity:boolean){
+    setIdentity(identity: boolean) {
         this.identity = identity;
         return this;
     }
 }
 
-async function updateAccount(ctx: Context, accountId: string, opts:UpdateOptions=UpdateOptions.default()) {
+async function updateAccount(ctx: Context, accountId: string, opts: UpdateOptions = UpdateOptions.default()) {
     const bal = await ctx.api.query.system.account(accountId);
     await ctx.db.collection('accounts').updateOne({ '_id': accountId },
         { '$set': { 'balance': bal.data.toJSON() } },
         { 'upsert': true });
 
     // update identity
-    if (opts.identity){
+    if (opts.identity) {
         const rv = await ctx.api.query.identity.identityOf(accountId);
-        if (rv.isSome){
+        if (rv.isSome) {
             const identity = rv.unwrap();
             const ident:any = {};
-            if (identity.info.display.isRaw){
+            if (identity.info.display.isRaw) {
                 ident['display'] = hexToString(identity.info.display.asRaw.toHex());
             }
-            if (identity.info.legal.isRaw){
+            if (identity.info.legal.isRaw) {
                 ident['legal'] = hexToString(identity.info.legal.asRaw.toHex());
             }
-            if (identity.info.web.isRaw){
+            if (identity.info.web.isRaw) {
                 ident['web'] = hexToString(identity.info.web.asRaw.toHex());
             }
-            if (identity.info.email.isRaw){
+            if (identity.info.email.isRaw) {
                 ident['email'] = hexToString(identity.info.email.asRaw.toHex());
             }
-            if (identity.info.twitter.isRaw){
+            if (identity.info.twitter.isRaw) {
                 ident['twitter'] = hexToString(identity.info.twitter.asRaw.toHex());
             }
-            if (identity.info.image.isRaw){
+            if (identity.info.image.isRaw) {
                 ident['image'] = hexToString(identity.info.image.asRaw.toHex());
             }
-            await ctx.db.collection("accounts").updateOne({'_id': accountId},
-                {'$set': {'identity': ident }}, {'upsert': true});
+            await ctx.db.collection("accounts").updateOne({ '_id': accountId },
+                { '$set': { 'identity': ident } }, { 'upsert': true });
         }
     }
-    
+
 }
 
 async function updateStats(ctx: Context) {
@@ -183,6 +217,30 @@ async function processBlock(ctx: Context, blockHash: Hash, verbose = false, call
         process.stdout.write(`[${number}] ${hash.toHex()}\r`);
     }
 
+    let blockTs: any
+    block.extrinsics.forEach((extr) => {
+        let method = "unknown";
+        let section = "unknown";
+
+        try {
+            const mCall = ctx.api.registry.findMetaCall(extr.callIndex);
+            if (mCall != null) {
+                method = mCall.method;
+                section = mCall.section;
+            }
+        } catch (e) {
+            console.log(`[ERROR] ${e}`);
+        }
+        section = section.toString();
+
+        if (section == "timestamp") {
+            if (method == "set") {
+                blockTs = extr.method.args[0];
+            }
+        }
+    });
+
+
     // process events
     const allEvents = await api.query.system.events.at(hash);
 
@@ -202,34 +260,36 @@ async function processBlock(ctx: Context, blockHash: Hash, verbose = false, call
     // console.log(`${allEvents}`);
 
     const procExtrs =
-        await Promise.all(extrinsics.map(async (extr, index) => {
+        await Promise.all(extrinsics.map(async (extr, extrIdx) => {
 
             const { signer, method: { callIndex, args } } = extr;
+
+            const extrIndex = `${blockNumber}-${extrIdx}`;
 
             allEvents
                 .filter(({ phase, event }) =>
                     phase.isApplyExtrinsic &&
-                    phase.asApplyExtrinsic.eq(index) &&
+                    phase.asApplyExtrinsic.eq(extrIdx) &&
                     event.method != 'ExtrinsicSuccess'
-                ).forEach(({ event }) => {
+                ).forEach(({ event }, eventIdx) => {
                     const dataJson = event.data.toJSON();
                     const dataHash = crc32(dataJson);
                     colEvents.updateOne({
-                        'block': blockNumber, 'extrinsic_index': index,
+                        'block': blockNumber, 'extrinsic_index': extrIdx,
                         'section': event.section, 'method': event.method,
                         'data_hash': dataHash
                     }, {
                         '$set': {
                             'block': blockNumber,
-                            'extrinsic_index': index,
+                            'extrinsic_index': extrIdx,
                             'section': event.section,
                             'method': event.method,
                             'data': dataJson,
                         }
                     }, { upsert: true });
-                    if (eventProcessorClass[event.section] && eventProcessorClass[event.section][event.method]) {
-                        eventProcessorClass[event.section][event.method](ctx, block, event);
-                    }
+                    eventProcessorClass[event.section]?.(
+                        ctx, event.method, event, eventIdx,
+                        block, blockTs?.toNumber(), extrIdx);
                 });
 
             let method = "unknown";
@@ -265,10 +325,8 @@ async function processBlock(ctx: Context, blockHash: Hash, verbose = false, call
                     {
                         '$set':
                         {
-                            'block': blockNumber,
-                            'src': `${signer}`,
-                            'dst': `${args[0]}`,
-                            'amount': `${args[1]}`
+                            'extrinsic_index': extrIndex,
+                            'amount': `${args[1]}`,
                         }
                     }, { upsert: true });
 
