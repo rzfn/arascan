@@ -48,28 +48,6 @@ function withDb<T>(callback: (db: Db, client: MongoClient) => Promise<T>) {
     return doner;
 }
 
-// function getTransfers(req: any, res: any, next: any) {
-//     const addr = req.params.addr;
-//     const { skip, limit } = parseSkipLimit(req);
-
-//     withDb(async (db, _client) => {
-//         db.collection("transfers").find({
-//             '$or': [
-//                 { 'src': addr },
-//                 { 'dst': addr }
-//             ]
-//         })
-//         .sort({ 'ts': -1 })
-//         .skip(skip).limit(limit)
-//         .toArray((err: any, result: Array<any>) => {
-//             if (err == null) {
-//                 res.send({ entries: result });
-//             }
-//         });
-//     }).done(next);
-
-// }
-
 function getAccounts(req: any, res: any, next: any) {
     const { skip, limit } = parseSkipLimit(req);
 
@@ -106,12 +84,14 @@ function getAccountTransfers(req: any, res: any, next: any) {
         return next();
     }
 
+    const filter = { '$or': [{ 'src': addr }, { 'dst': addr }] };
+
     withDb(async (db, _client) => {
         const count = await db.collection("transfers")
-            .count({ '$or': [{ 'src': addr }, { 'dst': addr }] });
+            .count(filter);
         if (count > 0) {
             db.collection("transfers")
-                .find({ '$or': [{ 'src': addr }, { 'dst': addr }] })
+                .find(filter)
                 .sort({ 'ts': -1 })
                 .skip(skip).limit(limit)
                 .toArray((err: any, result: Array<any>) => {
@@ -122,7 +102,64 @@ function getAccountTransfers(req: any, res: any, next: any) {
         } else {
             res.send({ entries: [], count });
         }
+    }).done(next);
+}
 
+function getAccountStakingTxs(req: any, res: any, next: any) {
+    const addr = req.params.addr;
+    const { skip, limit } = parseSkipLimit(req);
+    if (!validOffsetLimit(skip, limit)) {
+        res.send({ entries: [] });
+        return next();
+    }
+
+    const filter = { 'stash_id': addr, 'event_id': {'$nin': ['Reward', 'Slash']} };
+
+    withDb(async (db, _client) => {
+        const count = await db.collection("staking_txs")
+            .count(filter);
+        if (count > 0) {
+            db.collection("staking_txs")
+                .find(filter)
+                .sort({ 'block_timestamp': -1 })
+                .skip(skip).limit(limit)
+                .toArray((err: any, result: Array<any>) => {
+                    if (err == null) {
+                        res.send({ data: { entries: result, count }});
+                    }
+                });
+        } else {
+            res.send({ entries: [], count });
+        }
+    }).done(next);
+}
+
+function getAccountStakingRewardsSlashes(req: any, res: any, next: any) {
+    const addr = req.params.addr;
+    const { skip, limit } = parseSkipLimit(req);
+    if (!validOffsetLimit(skip, limit)) {
+        res.send({ entries: [] });
+        return next();
+    }
+
+    const filter = { 'stash_id': addr, 'event_id': {'$in': ['Reward', 'Slash']} };
+
+    withDb(async (db, _client) => {
+        const count = await db.collection("staking_txs")
+            .count(filter);
+        if (count > 0) {
+            db.collection("staking_txs")
+                .find(filter)
+                .sort({ 'block_timestamp': -1 })
+                .skip(skip).limit(limit)
+                .toArray((err: any, result: Array<any>) => {
+                    if (err == null) {
+                        res.send({ data: { entries: result, count }});
+                    }
+                });
+        } else {
+            res.send({ entries: [], count });
+        }
     }).done(next);
 }
 
@@ -342,8 +379,9 @@ ApiPromise.create({
 });
 
 
-// server.get('/transfers/:addr', getTransfers);
 server.get('/account/:addr/transfers', getAccountTransfers);
+server.get('/account/:addr/staking_txs', getAccountStakingTxs);
+server.get('/account/:addr/rewards_slashes', getAccountStakingRewardsSlashes);
 server.get('/account/:addr', getAccountOne);
 server.get('/accounts', getAccounts);
 server.get('/block/:block', getBlockOne);

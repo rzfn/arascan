@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { ApiPromise } from '@polkadot/api';
+import { ApiPromise, WsProvider } from '@polkadot/api';
 import type { Hash } from '@polkadot/types/interfaces';
 import { MongoClient } from 'mongodb';
 import { Context, getLastBlock, processBlock } from '@arascan/components';
@@ -75,7 +75,12 @@ async function main() {
 
     const dbUri = process.env.MONGODB_URI || 'mongodb://localhost:27017';
 
+    const WS_SOCKET_URL = process.env.NUCHAIN_WS_SOCKET_URL || 'ws://127.0.0.1:9944'
+
+    console.log(`Using WS address: ${WS_SOCKET_URL}`);
+
     const api = await ApiPromise.create({
+        provider: new WsProvider(WS_SOCKET_URL),
         types: {
             Address: 'MultiAddress',
             LookupSource: 'MultiAddress'
@@ -83,7 +88,6 @@ async function main() {
     });
 
     console.log(`${process.argv}`)
-
 
     let startingBlockNumber = process.argv.find(a => a.startsWith("--starting-block="));
 
@@ -93,11 +97,16 @@ async function main() {
     if (startingBlockNumber) {
         startingBlockNumber = startingBlockNumber.split("=")[1];
         startingBlockHash = (await api.rpc.chain.getBlockHash(startingBlockNumber));
-        console.log(`Use user specified starting block [${startingBlockNumber}] ${startingBlockHash}`);
+        console.log(`Using user specified starting block [${startingBlockNumber}] ${startingBlockHash}`);
+    } else {
+        console.log(`Using latest block ${startingBlockHash}`);
     }
     startingBlock = (await api.rpc.chain.getHeader(startingBlockHash));
 
     MongoClient.connect(dbUri, async (err, client: MongoClient) => {
+
+        console.log(`Start sequencing ${err} ...`);
+
         if (err == null) {
             const db = client.db("nuchain");
 
