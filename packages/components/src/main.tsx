@@ -312,7 +312,7 @@ async function processBlock(ctx: Context, blockHash: Hash, verbose = false, call
 
                 const query = {
                     'src': `${signer}`,
-                    'nonce': extr.nonce.toNumber()
+                    'nonce': extr.nonce.toNumber(),
                 };
 
                 let result = await colTrf.updateOne(
@@ -320,6 +320,8 @@ async function processBlock(ctx: Context, blockHash: Hash, verbose = false, call
                     {
                         '$set':
                         {
+                            'src': `${signer}`,
+                            'nonce': extr.nonce.toNumber(),
                             'block': blockNumber,
                             'extrinsic_index': extrIndex,
                             'dst': `${args[0]}`,
