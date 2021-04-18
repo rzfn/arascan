@@ -159,7 +159,7 @@ async function updateAccount(ctx: Context, accountId: string, opts: UpdateOption
         const rv = await ctx.api.query.identity.identityOf(accountId);
         if (rv.isSome) {
             const identity = rv.unwrap();
-            const ident:any = {};
+            const ident: any = {};
             if (identity.info.display.isRaw) {
                 ident['display'] = hexToString(identity.info.display.asRaw.toHex());
             }
@@ -205,7 +205,7 @@ async function updateStats(ctx: Context) {
 
 }
 
-async function processBlock(ctx: Context, blockHash: Hash, verbose = false, callback: (skipped: boolean) => void = () => ({}) ) {
+async function processBlock(ctx: Context, blockHash: Hash, verbose = false, callback: (skipped: boolean) => void = () => ({})) {
     const { api, db } = ctx;
 
     const signedBlock = await api.rpc.chain.getBlock(blockHash);
@@ -217,7 +217,7 @@ async function processBlock(ctx: Context, blockHash: Hash, verbose = false, call
         process.stdout.write(`[${number}] ${hash.toHex()}\r`);
     }
 
-    let blockTs: any
+    let blockTs: any;
     block.extrinsics.forEach((extr) => {
         let method = "unknown";
         let section = "unknown";
@@ -308,27 +308,29 @@ async function processBlock(ctx: Context, blockHash: Hash, verbose = false, call
 
             if (metaClassMap[`${section}`] && metaClassMap[`${section}`][`${method}`] == "transfer") {
                 console.log(`\n${extr}`);
-
-                if (metaClassMap[`${section}`][`${method}`] == "transfer") {
-                    console.log(`[${blockNumber}] ${section}/${method}: ${signer} -> ${args[0]} amount: ${args[1]}`);
-                }
+                console.log(`[${blockNumber}] ${section}/${method}: ${signer} -> ${args[0]} amount: ${args[1]}`);
 
                 const query = {
-                    'block': blockNumber,
                     'src': `${signer}`,
-                    'dst': `${args[0]}`,
                     'nonce': extr.nonce.toNumber()
                 };
 
-                await colTrf.updateOne(
+                let result = await colTrf.updateOne(
                     query,
                     {
                         '$set':
                         {
+                            'block': blockNumber,
                             'extrinsic_index': extrIndex,
+                            'dst': `${args[0]}`,
                             'amount': `${args[1]}`,
                         }
                     }, { upsert: true });
+
+                // If nothing has changed, don't do further processing.
+                if (result.upsertedCount == 0 && result.modifiedCount == 0) {
+                    return [];
+                }
 
                 const obj = await colTrf.findOne(query);
                 return [{ trait: "target", section, method, id: obj._id, nonce: extr.nonce.toNumber() }];
@@ -352,7 +354,7 @@ async function processBlock(ctx: Context, blockHash: Hash, verbose = false, call
                 d.updater_extr = updater[0].extr;
                 if (processorClass[`${updater[0].section}`] && processorClass[`${updater[0].section}`][`${updater[0].method}__${_method}`]) {
                     processorClass[`${updater[0].section}`][`${updater[0].method}__${_method}`](ctx, d);
-                }    
+                }
             }
 
             allEvents.forEach(({ event }) => {
